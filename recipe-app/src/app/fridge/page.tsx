@@ -4,6 +4,61 @@ import { useState } from "react";
 import Link from "next/link";
 import { useApp } from "../store/AppContext";
 
+interface Suggestion {
+  title: string;
+  cookTime: string;
+  calories: number;
+  reason: string;
+  keywords: string[]; // ingredients that trigger this suggestion
+}
+
+const allSuggestions: Suggestion[] = [
+  { title: "Garlic Butter Spinach", cookTime: "10 min", calories: 120, reason: "Quick & healthy side", keywords: ["garlic", "spinach", "butter"] },
+  { title: "Chicken Stir Fry", cookTime: "20 min", calories: 380, reason: "Easy weeknight dinner", keywords: ["chicken", "garlic", "onion", "pepper"] },
+  { title: "Garlic Bread", cookTime: "15 min", calories: 220, reason: "Perfect side dish", keywords: ["garlic", "butter", "bread"] },
+  { title: "Spinach & Egg Scramble", cookTime: "8 min", calories: 200, reason: "High protein breakfast", keywords: ["spinach", "egg", "garlic"] },
+  { title: "Lemon Herb Chicken", cookTime: "25 min", calories: 350, reason: "Just need a lemon!", keywords: ["chicken", "garlic", "olive oil"] },
+  { title: "Simple Fried Rice", cookTime: "15 min", calories: 340, reason: "Great for leftovers", keywords: ["rice", "egg", "garlic", "onion"] },
+  { title: "Tomato Basil Pasta", cookTime: "20 min", calories: 400, reason: "Classic comfort food", keywords: ["pasta", "tomato", "garlic", "basil"] },
+  { title: "Greek Salad", cookTime: "10 min", calories: 180, reason: "Fresh & light", keywords: ["cucumber", "tomato", "onion", "olive oil"] },
+  { title: "Avocado Toast", cookTime: "5 min", calories: 250, reason: "Quick snack", keywords: ["avocado", "bread", "lemon", "salt"] },
+  { title: "Salmon with Veggies", cookTime: "25 min", calories: 420, reason: "Healthy & filling", keywords: ["salmon", "garlic", "spinach", "lemon"] },
+  { title: "Chicken Caesar Wrap", cookTime: "10 min", calories: 380, reason: "Easy lunch", keywords: ["chicken", "lettuce", "cheese"] },
+  { title: "Mushroom Omelette", cookTime: "10 min", calories: 220, reason: "Protein-packed breakfast", keywords: ["egg", "mushroom", "cheese"] },
+  { title: "One-Pot Chicken & Rice", cookTime: "30 min", calories: 450, reason: "Minimal cleanup", keywords: ["chicken", "rice", "garlic", "onion"] },
+  { title: "Honey Garlic Shrimp", cookTime: "15 min", calories: 280, reason: "Ready in minutes", keywords: ["shrimp", "garlic", "honey"] },
+  { title: "Black Bean Tacos", cookTime: "15 min", calories: 320, reason: "Meatless Monday!", keywords: ["beans", "tortilla", "onion", "lime"] },
+];
+
+function getSuggestions(fridgeItems: string[]): Suggestion[] {
+  if (fridgeItems.length === 0) return [];
+
+  // Score each suggestion by how many of its keywords match fridge items
+  const scored = allSuggestions.map((s) => {
+    const matchCount = s.keywords.filter((kw) =>
+      fridgeItems.some((fi) => fi.includes(kw) || kw.includes(fi))
+    ).length;
+    return { ...s, matchCount, matchPercent: matchCount / s.keywords.length };
+  });
+
+  // Return suggestions that match at least 1 ingredient, sorted by match percentage
+  return scored
+    .filter((s) => s.matchCount > 0)
+    .sort((a, b) => b.matchPercent - a.matchPercent)
+    .slice(0, 5)
+    .map((s) => {
+      const missing = s.keywords.filter(
+        (kw) => !fridgeItems.some((fi) => fi.includes(kw) || kw.includes(fi))
+      );
+      return {
+        ...s,
+        reason: missing.length === 0
+          ? "You have all the ingredients!"
+          : `Just need: ${missing.join(", ")}`,
+      };
+    });
+}
+
 export default function Fridge() {
   const { recipes, fridgeItems, addFridgeItem, removeFridgeItem } = useApp();
   const [newItem, setNewItem] = useState("");
@@ -170,6 +225,34 @@ export default function Fridge() {
                   <path fillRule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
                 </svg>
               </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Try something new — AI suggestions based on fridge contents */}
+      {fridgeItems.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-base font-bold mb-3 flex items-center gap-2">
+            <span className="w-6 h-6 rounded-lg gradient-bg flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-white">
+                <path d="M8 1a.75.75 0 0 1 .75.75v2a.75.75 0 0 1-1.5 0v-2A.75.75 0 0 1 8 1ZM10.495 3.046a.75.75 0 0 1 1.06 0l1.414 1.414a.75.75 0 0 1-1.06 1.06L10.495 4.106a.75.75 0 0 1 0-1.06Z" />
+              </svg>
+            </span>
+            Try something new
+          </h2>
+          <div className="space-y-2">
+            {getSuggestions(itemNames).map((suggestion, i) => (
+              <div
+                key={i}
+                className="bg-surface rounded-2xl p-4 card-hover"
+              >
+                <h3 className="font-bold text-sm">{suggestion.title}</h3>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-text-muted">{suggestion.cookTime} · {suggestion.calories} cal</p>
+                  <p className="text-xs text-success font-semibold">{suggestion.reason}</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
